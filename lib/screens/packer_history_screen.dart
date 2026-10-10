@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import 'order_details_screen.dart';
 
 class PackerHistoryScreen extends StatefulWidget {
   final StaffUser? user;
@@ -248,8 +249,10 @@ class _HistoryOrderTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radius),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Order ${order.id} packed on ${order.date ?? ''}')),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(order: order),
+            ),
           );
         },
         child: Padding(

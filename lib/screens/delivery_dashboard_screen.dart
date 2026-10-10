@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import 'order_details_screen.dart';
 
 class DeliveryDashboardScreen extends StatefulWidget {
   final StaffUser user;
@@ -469,9 +470,22 @@ class _DeliveryCard extends StatelessWidget {
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(
+                order: delivery,
+                onAction: () => onAction(),
+                isUpdating: isUpdating,
+              ),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -691,8 +705,9 @@ class _DeliveryCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _IconLine extends StatelessWidget {

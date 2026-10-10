@@ -169,7 +169,49 @@ class SupabaseService {
   static Future<List<PackerOrder>> getPackerHistory(String staffId) async {
     final response = await client
         .from('order_status_history')
-        .select('id, order_id, status, changed_at, orders(id, order_number, total, created_at)')
+        .select('''
+          id,
+          order_id,
+          status,
+          changed_at,
+          orders (
+            id,
+            order_number,
+            total,
+            status,
+            order_type,
+            created_at,
+            store_id,
+            customer_id,
+            payment_method,
+            customers (
+              id,
+              name,
+              phone,
+              email,
+              addresses (
+                id,
+                line1,
+                line2,
+                city,
+                state,
+                pincode,
+                is_default
+              )
+            ),
+            order_items (
+              id,
+              quantity,
+              line_total,
+              products (
+                id,
+                name,
+                sku,
+                selling_price
+              )
+            )
+          )
+        ''')
         .eq('status', 'PACKED')
         .eq('changed_by', staffId)
         .order('changed_at', ascending: false);
@@ -181,23 +223,9 @@ class SupabaseService {
       final orderMap = hist['orders'] as Map<String, dynamic>?;
       if (orderMap == null) continue;
 
-      final orderId = (orderMap['id'] ?? hist['order_id']) as String;
-
-      // Safe view
-      final itemsRes = await client
-          .from('packer_order_items_view')
-          .select('product_name, quantity, unit_mrp, tax, line_total_mrp')
-          .eq('order_id', orderId);
-
-      final items = (itemsRes as List<dynamic>)
-          .map((item) => OrderItem.fromMap(item as Map<String, dynamic>))
-          .toList();
-
-      orders.add(PackerOrder.fromHistoryMap(
-        orderMap: orderMap,
-        historyMap: hist,
-        items: items,
-      ));
+      final order = PackerOrder.fromMap(orderMap);
+      order.status = PackStatus.packed;
+      orders.add(order);
     }
 
     return orders;

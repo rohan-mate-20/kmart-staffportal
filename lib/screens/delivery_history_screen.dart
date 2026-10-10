@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import 'order_details_screen.dart';
 
 class DeliveryHistoryScreen extends StatefulWidget {
   final StaffUser? user;
@@ -228,8 +229,10 @@ class _CompletedDeliveryTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radius),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Delivery ${delivery.id} completed.')),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(order: delivery),
+            ),
           );
         },
         child: Padding(

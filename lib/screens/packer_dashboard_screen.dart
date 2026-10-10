@@ -4,6 +4,7 @@ import '../models/models.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
+import 'order_details_screen.dart';
 
 class PackerDashboardScreen extends StatefulWidget {
   final StaffUser user;
@@ -320,151 +321,159 @@ class _PackerOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Order ID + Status ──────────────────────────────────────────
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.id,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${order.time} • ${order.items.length} items',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                StatusChip.pending(order.status.label),
-              ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radius),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(
+                order: order,
+                onAction: onMarkPacked,
+              ),
             ),
-
-            // ── Customer info ───────────────────────────────────────────────
-            if (order.customerName != 'Customer' ||
-                order.phone != 'N/A' ||
-                order.addressLine1.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              const Divider(height: 1),
-              const SizedBox(height: 10),
-              if (order.customerName != 'Customer')
-                _IconLine(
-                  icon: Icons.person_outline,
-                  text: order.customerName,
-                  bold: true,
-                ),
-              if (order.phone != 'N/A') ...[
-                const SizedBox(height: 6),
-                _IconLine(icon: Icons.call_outlined, text: order.phone),
-              ],
-              if (order.addressLine1.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _IconLine(
-                  icon: Icons.location_on_outlined,
-                  text: order.addressLine1,
-                  maxLines: 2,
-                ),
-              ],
-            ],
-
-            const SizedBox(height: 14),
-
-            // ── Items + Action ──────────────────────────────────────────────
-            IntrinsicHeight(
-              child: Row(
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 5,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final item in order.items)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              children: [
-                                ProductThumb(name: item.name),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    item.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.navy,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Qty: ${item.quantity}',
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Text(
+                          order.id,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.navy,
                           ),
-                      ],
-                    ),
-                  ),
-                  const VerticalDivider(width: 24),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _KeyValueRow(
-                          label: 'Total Items',
-                          value: '${order.totalItems}',
                         ),
-                        const SizedBox(height: 6),
-                        _KeyValueRow(
-                          label: 'Order Value',
-                          value: rupees(order.orderValue),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: onMarkPacked,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              textStyle: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            child: const Text('Mark as Packed'),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${order.time} • ${order.items.length} items',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  StatusChip.pending(order.status.label),
                 ],
               ),
-            ),
-          ],
+              if (order.customerName != 'Customer' ||
+                  order.phone != 'N/A' ||
+                  order.addressLine1.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                if (order.customerName != 'Customer')
+                  _IconLine(
+                    icon: Icons.person_outline,
+                    text: order.customerName,
+                    bold: true,
+                  ),
+                if (order.phone != 'N/A') ...[
+                  const SizedBox(height: 6),
+                  _IconLine(icon: Icons.call_outlined, text: order.phone),
+                ],
+                if (order.addressLine1.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  _IconLine(
+                    icon: Icons.location_on_outlined,
+                    text: order.addressLine1,
+                    maxLines: 2,
+                  ),
+                ],
+              ],
+              const SizedBox(height: 14),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final item in order.items)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Row(
+                                children: [
+                                  ProductThumb(name: item.name),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      item.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.navy,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Qty: ${item.quantity}',
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const VerticalDivider(width: 24),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _KeyValueRow(
+                            label: 'Total Items',
+                            value: '${order.totalItems}',
+                          ),
+                          const SizedBox(height: 6),
+                          _KeyValueRow(
+                            label: 'Order Value',
+                            value: rupees(order.orderValue),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: onMarkPacked,
+                              style: ElevatedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                textStyle: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              child: const Text('Mark as Packed'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
