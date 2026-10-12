@@ -285,6 +285,8 @@ class _HistoryOrderTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  OrderTypeChip(type: order.orderType),
+                  const SizedBox(width: 8),
                   StatusChip.done('Packed'),
                   const SizedBox(width: 4),
                   const Icon(Icons.chevron_right,
@@ -292,37 +294,24 @@ class _HistoryOrderTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              OrderItemsList(items: order.items),
+              const SizedBox(height: 12),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  for (final item in order.items.take(3))
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ProductThumb(name: item.name, size: 30),
-                    ),
-                  if (order.items.length > 3)
-                    Container(
-                      width: 30,
-                      height: 30,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '+${order.items.length - 3}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
                   Text(
-                    '${order.totalItems} items • ${rupees(order.orderValue)}',
+                    '${order.totalItems} items',
                     style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    rupees(order.orderValue),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.navy,
                     ),
                   ),
@@ -335,3 +324,4 @@ class _HistoryOrderTile extends StatelessWidget {
     );
   }
 }
+

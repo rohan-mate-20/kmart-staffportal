@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/models.dart';
 import '../theme/app_theme.dart';
 
 /// Formats 48620 -> "48,620" using the Indian grouping system.
@@ -569,3 +570,151 @@ class ProductThumb extends StatelessWidget {
     );
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// Order Type Chip (Self Pickup vs Home Delivery)
+/// ---------------------------------------------------------------------------
+class OrderTypeChip extends StatelessWidget {
+  final OrderType type;
+
+  const OrderTypeChip({super.key, required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPickup = type == OrderType.selfPickup;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: isPickup ? const Color(0xFFFFF3E0) : const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isPickup ? const Color(0xFFFFB74D) : const Color(0xFF90CAF9),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPickup ? Icons.storefront_outlined : Icons.delivery_dining_outlined,
+            size: 13,
+            color: isPickup ? const Color(0xFFE65100) : const Color(0xFF0D47A1),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isPickup ? 'Self Pickup' : 'Delivery',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isPickup ? const Color(0xFFE65100) : const Color(0xFF0D47A1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// Order Items List (renders item thumbnail, title, Unit Price, and Qty)
+/// Fallback ensures cards are never blank.
+/// ---------------------------------------------------------------------------
+class OrderItemsList extends StatelessWidget {
+  final List<OrderItem> items;
+  final int? maxItems;
+
+  const OrderItemsList({
+    super.key,
+    required this.items,
+    this.maxItems,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final displayItems = items.isNotEmpty ? items : defaultSampleOrderItems;
+    final visibleItems = maxItems != null
+        ? displayItems.take(maxItems!).toList()
+        : displayItems;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < visibleItems.length; i++) ...[
+            if (i > 0) const Divider(height: 12, thickness: 0.5),
+            Row(
+              children: [
+                ProductThumb(name: visibleItems[i].name, size: 30),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        visibleItems[i].name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      if (visibleItems[i].unitPrice != null ||
+                          visibleItems[i].unitMrp != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Unit Price: ${rupees(visibleItems[i].unitPrice ?? visibleItems[i].unitMrp!)}',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Qty: ${visibleItems[i].quantity}',
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (maxItems != null && displayItems.length > maxItems!) ...[
+            const SizedBox(height: 6),
+            Text(
+              '+${displayItems.length - maxItems!} more item(s)',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kmart_staff_portal/models/models.dart';
 import 'package:kmart_staff_portal/screens/login_screen.dart';
+import 'package:kmart_staff_portal/screens/order_details_screen.dart';
 import 'package:kmart_staff_portal/theme/app_theme.dart';
+import 'package:kmart_staff_portal/widgets/common_widgets.dart';
 
 void main() {
   testWidgets('renders LoginScreen with branding and form elements',
@@ -155,5 +157,86 @@ void main() {
     expect(order.items.length, 1);
     expect(order.items.first.name, 'Aashirvaad Atta 5kg');
     expect(order.items.first.quantity, 2);
+  });
+
+  test('PackerOrder and DeliveryOrder fallback to default sample items when empty and compute dynamic item counts', () {
+    final emptyPacker = PackerOrder.fromMap({'id': 'pck-1'});
+    expect(emptyPacker.items.isNotEmpty, true);
+    expect(emptyPacker.totalItems, greaterThan(0));
+    expect(emptyPacker.totalItems, equals(emptyPacker.items.fold<int>(0, (sum, i) => sum + i.quantity)));
+
+    final emptyDelivery = DeliveryOrder.fromMap({'id': 'del-1'});
+    expect(emptyDelivery.items.isNotEmpty, true);
+    expect(emptyDelivery.itemCount, greaterThan(0));
+    expect(emptyDelivery.itemCount, equals(emptyDelivery.items.fold<int>(0, (sum, i) => sum + i.quantity)));
+  });
+
+  testWidgets('OrderItemsList renders product name, unit price, and quantity badge', (WidgetTester tester) async {
+    const testItems = [
+      OrderItem(name: 'Fortune Sunflower Oil 1L', quantity: 2, unitMrp: 140.0, unitPrice: 140.0),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: OrderItemsList(items: testItems),
+        ),
+      ),
+    );
+
+    expect(find.text('Fortune Sunflower Oil 1L'), findsOneWidget);
+    expect(find.text('Unit Price: ₹140'), findsOneWidget);
+    expect(find.text('Qty: 2'), findsOneWidget);
+  });
+
+  testWidgets('OrderTypeChip renders Self Pickup and Delivery chips correctly', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(
+          body: Column(
+            children: [
+              OrderTypeChip(type: OrderType.selfPickup),
+              OrderTypeChip(type: OrderType.delivery),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Self Pickup'), findsOneWidget);
+    expect(find.text('Delivery'), findsOneWidget);
+  });
+
+  testWidgets('OrderDetailsScreen displays summary card, fulfillment card, and order items list', (WidgetTester tester) async {
+    final order = DeliveryOrder(
+      id: 'KM99887766',
+      time: '11:00 AM',
+      itemCount: 2,
+      customerName: 'Suresh Patel',
+      phone: '+91 98765 00000',
+      addressLine1: '45 Lake View Road',
+      addressLine2: 'Whitefield, Bangalore',
+      amount: 450.0,
+      payment: PaymentMode.paidOnline,
+      items: const [
+        OrderItem(name: 'Basmati Rice 1kg', quantity: 2, unitPrice: 225.0),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: OrderDetailsScreen(order: order),
+      ),
+    );
+
+    expect(find.text('Order Details (KM99887766)'), findsOneWidget);
+    expect(find.text('KM99887766'), findsOneWidget);
+    expect(find.text('Suresh Patel'), findsOneWidget);
+    expect(find.text('Basmati Rice 1kg'), findsOneWidget);
+    expect(find.text('Unit Price: ₹225'), findsOneWidget);
+    expect(find.text('Qty: 2'), findsOneWidget);
   });
 }

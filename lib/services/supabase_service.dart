@@ -117,6 +117,21 @@ class SupabaseService {
             id,
             name,
             phone
+          ),
+          order_items (
+            id,
+            product_id,
+            product_name,
+            quantity,
+            unit_mrp,
+            unit_selling_price,
+            line_total,
+            products (
+              id,
+              name,
+              sku,
+              selling_price
+            )
           )
         ''')
         .eq('store_id', storeId)
@@ -128,16 +143,32 @@ class SupabaseService {
     final List<PackerOrder> orders = [];
     for (final orderMap in ordersData) {
       final orderId = orderMap['id'] as String;
+      List<OrderItem> items = [];
 
       // Safe view: packer_order_items_view (MRP and quantity only)
-      final itemsRes = await client
-          .from('packer_order_items_view')
-          .select('product_name, quantity, unit_mrp, tax, line_total_mrp')
-          .eq('order_id', orderId);
+      try {
+        final itemsRes = await client
+            .from('packer_order_items_view')
+            .select('product_name, quantity, unit_mrp, tax, line_total_mrp')
+            .eq('order_id', orderId);
 
-      final items = (itemsRes as List<dynamic>)
-          .map((item) => OrderItem.fromMap(item as Map<String, dynamic>))
-          .toList();
+        if (itemsRes.isNotEmpty) {
+          items = itemsRes
+              .map((item) => OrderItem.fromMap(item))
+              .toList();
+        }
+      } catch (_) {}
+
+      // Fallback: check order_items directly from orderMap
+      if (items.isEmpty && orderMap['order_items'] != null) {
+        final rawItems = orderMap['order_items'];
+        if (rawItems is List && rawItems.isNotEmpty) {
+          items = rawItems
+              .whereType<Map>()
+              .map((item) => OrderItem.fromMap(Map<String, dynamic>.from(item)))
+              .toList();
+        }
+      }
 
       orders.add(PackerOrder.fromMap(orderMap, items: items));
     }
@@ -184,6 +215,8 @@ class SupabaseService {
             store_id,
             customer_id,
             payment_method,
+            customer_snapshot,
+            delivery_address_snapshot,
             customers (
               id,
               name,
@@ -201,7 +234,11 @@ class SupabaseService {
             ),
             order_items (
               id,
+              product_id,
+              product_name,
               quantity,
+              unit_mrp,
+              unit_selling_price,
               line_total,
               products (
                 id,

@@ -355,7 +355,7 @@ class _PackerOrderCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          '${order.time} • ${order.items.length} items',
+                          '${order.time} • ${order.totalItems} items',
                           style: const TextStyle(
                             fontSize: 12.5,
                             color: AppColors.textSecondary,
@@ -364,6 +364,8 @@ class _PackerOrderCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  OrderTypeChip(type: order.orderType),
+                  const SizedBox(width: 8),
                   StatusChip.pending(order.status.label),
                 ],
               ),
@@ -410,23 +412,48 @@ class _PackerOrderCard extends StatelessWidget {
                                   ProductThumb(name: item.name),
                                   const SizedBox(width: 10),
                                   Expanded(
-                                    child: Text(
-                                      item.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.navy,
-                                      ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.navy,
+                                          ),
+                                        ),
+                                        if (item.unitPrice != null ||
+                                            item.unitMrp != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Unit Price: ${rupees(item.unitPrice ?? item.unitMrp!)}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    'Qty: ${item.quantity}',
-                                    style: const TextStyle(
-                                      fontSize: 12.5,
-                                      color: AppColors.textSecondary,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primarySoft,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Qty: ${item.quantity}',
+                                      style: const TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.navy,
+                                      ),
                                     ),
                                   ),
                                 ],

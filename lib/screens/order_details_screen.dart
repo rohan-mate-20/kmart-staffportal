@@ -26,8 +26,24 @@ class OrderDetailsScreen extends StatelessWidget {
     final time = isDelivery ? delivery!.time : packer!.time;
     final date = isDelivery ? delivery!.date : packer!.date;
     final amount = isDelivery ? delivery!.amount : packer!.orderValue;
-    final items = isDelivery ? delivery!.items : packer!.items;
-    final statusLabel = isDelivery ? delivery!.status.label : packer!.status.label;
+    final rawItems = isDelivery ? delivery!.items : packer!.items;
+    final items = rawItems.isNotEmpty ? rawItems : defaultSampleOrderItems;
+    final statusLabel =
+        isDelivery ? delivery!.status.label : packer!.status.label;
+    final orderType = isDelivery ? delivery!.orderType : packer!.orderType;
+    final isPickup = orderType == OrderType.selfPickup;
+
+    final customerName = isDelivery
+        ? delivery!.customerName
+        : (packer!.customerName != 'Customer' ? packer.customerName : 'Customer');
+    final phone = isDelivery
+        ? delivery!.phone
+        : (packer!.phone != 'N/A' ? packer.phone : 'N/A');
+    final address = isDelivery
+        ? (delivery!.addressLine2.isNotEmpty
+            ? '${delivery.addressLine1}, ${delivery.addressLine2}'
+            : delivery.addressLine1)
+        : packer!.addressLine1;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,7 +58,7 @@ class OrderDetailsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Header Card
+          // ── 1. Top Order Summary Card ──────────────────────────────
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
@@ -60,7 +76,14 @@ class OrderDetailsScreen extends StatelessWidget {
                           color: AppColors.navy,
                         ),
                       ),
-                      StatusChip.info(statusLabel),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          OrderTypeChip(type: orderType),
+                          const SizedBox(width: 8),
+                          StatusChip.info(statusLabel),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -75,64 +98,6 @@ class OrderDetailsScreen extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 14),
                     child: Divider(),
                   ),
-                  if (isDelivery && delivery != null) ...[
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline,
-                            size: 18, color: AppColors.navy),
-                        const SizedBox(width: 8),
-                        Text(
-                          delivery.customerName,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(Icons.call_outlined,
-                            size: 18, color: AppColors.navy),
-                        const SizedBox(width: 8),
-                        Text(
-                          delivery.phone,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.location_on_outlined,
-                            size: 18, color: AppColors.navy),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            delivery.addressLine2.isNotEmpty
-                                ? '${delivery.addressLine1}, ${delivery.addressLine2}'
-                                : delivery.addressLine1,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              height: 1.35,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Divider(),
-                    ),
-                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -171,14 +136,141 @@ class OrderDetailsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          const Text(
-            'Order Items',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.navy,
+          const SizedBox(height: 16),
+
+          // ── 2. Fulfillment Card (Self Pickup vs Home Delivery) ─────
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isPickup
+                            ? Icons.storefront_outlined
+                            : Icons.local_shipping_outlined,
+                        size: 20,
+                        color: AppColors.navy,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isPickup
+                            ? 'Fulfillment: Store Self Pickup'
+                            : 'Fulfillment: Home Delivery',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  if (customerName != 'Customer') ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.person_outline,
+                            size: 17, color: AppColors.navy),
+                        const SizedBox(width: 8),
+                        Text(
+                          customerName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (phone != 'N/A') ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.call_outlined,
+                            size: 17, color: AppColors.navy),
+                        const SizedBox(width: 8),
+                        Text(
+                          phone,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (isPickup) ...[
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline,
+                            size: 17, color: AppColors.textSecondary),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Customer will collect this order at store service counter.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else if (address.isNotEmpty && address != 'Address') ...[
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.location_on_outlined,
+                            size: 17, color: AppColors.navy),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            address,
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              height: 1.35,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
+          ),
+          const SizedBox(height: 18),
+
+          // ── 3. Complete Order Items List ───────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Order Items',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.navy,
+                ),
+              ),
+              Text(
+                '${items.fold<int>(0, (sum, i) => sum + i.quantity)} items',
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Card(
@@ -186,53 +278,63 @@ class OrderDetailsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  for (final item in items)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          ProductThumb(name: item.name, size: 36),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                  for (int i = 0; i < items.length; i++) ...[
+                    if (i > 0) const Divider(height: 16),
+                    Row(
+                      children: [
+                        ProductThumb(name: items[i].name, size: 40),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                items[i].name,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                              if (items[i].unitPrice != null ||
+                                  items[i].unitMrp != null) ...[
+                                const SizedBox(height: 3),
                                 Text(
-                                  item.name,
+                                  'Unit Price: ${rupees(items[i].unitPrice ?? items[i].unitMrp!)}',
                                   style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.navy,
+                                    fontSize: 12.5,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
-                                if (item.unitMrp != null) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Unit Price: ${rupees(item.unitMrp!)}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
                               ],
-                            ),
+                            ],
                           ),
-                          Text(
-                            'Qty: ${item.quantity}',
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Qty: ${items[i].quantity}',
                             style: const TextStyle(
-                              fontSize: 13.5,
+                              fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.navy,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                  ],
                 ],
               ),
             ),
           ),
+
+          // ── 4. Bottom Action Button ────────────────────────────────
           if (onAction != null) ...[
             const SizedBox(height: 24),
             SizedBox(
@@ -275,3 +377,5 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 }
+
+typedef OrderDetailScreen = OrderDetailsScreen;

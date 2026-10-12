@@ -145,14 +145,15 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
                         label: 'Deliveries\nCompleted',
                       ),
                       SummaryStripItem(
+                        icon: Icons.shopping_bag_outlined,
+                        value:
+                            '${_filteredHistory.fold<int>(0, (sum, d) => sum + d.itemCount)}',
+                        label: 'Items\nDelivered',
+                      ),
+                      SummaryStripItem(
                         icon: Icons.currency_rupee,
                         value: rupees(_totalValue),
                         label: 'Total Order\nValue',
-                      ),
-                      SummaryStripItem(
-                        icon: Icons.check_circle_outline,
-                        value: '${_allHistory.length}',
-                        label: 'All-Time\nDeliveries',
                       ),
                     ],
                   ),
@@ -265,12 +266,16 @@ class _CompletedDeliveryTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  OrderTypeChip(type: delivery.orderType),
+                  const SizedBox(width: 8),
                   StatusChip.done('Delivered'),
                   const SizedBox(width: 4),
                   const Icon(Icons.chevron_right,
                       size: 20, color: AppColors.textSecondary),
                 ],
               ),
+              const SizedBox(height: 12),
+              OrderItemsList(items: delivery.items),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
