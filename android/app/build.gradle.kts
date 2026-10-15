@@ -48,4 +48,8 @@ flutter {
     source = "../.."
 }
 
+tasks.matching { it.name.contains("JavaResource") }.configureEach {
+    doNotTrackState("Workaround for Gradle 9.3+ cacheDir issue")
+}
+
 
