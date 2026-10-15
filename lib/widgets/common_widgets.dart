@@ -38,45 +38,88 @@ class KmartLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final darkText = onDark ? Colors.white : AppColors.navy;
+    final imageWidget = Image.asset(
+      'assets/logo.png',
+      height: fontSize * 1.5,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset(
+          'asset/logo.png',
+          height: fontSize * 1.5,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SizedBox(
+                  width: fontSize * 1.05,
+                  height: fontSize * 1.35,
+                  child: CustomPaint(painter: _KmartMarkPainter()),
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  'MART',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    height: 1.05,
+                    color: onDark ? Colors.white : AppColors.navy,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    final logoCard = onDark
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: imageWidget,
+          )
+        : imageWidget;
+
+    if (subtitle == null) {
+      return logoCard;
+    }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(
-          width: fontSize * 1.05,
-          height: fontSize * 1.35,
-          child: CustomPaint(painter: _KmartMarkPainter()),
-        ),
-        const SizedBox(width: 3),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'MART',
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-                height: 1.05,
-                color: darkText,
-              ),
+        logoCard,
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+          decoration: BoxDecoration(
+            color: onDark
+                ? Colors.white.withValues(alpha: 0.15)
+                : AppColors.navy.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            subtitle!,
+            style: TextStyle(
+              fontSize: fontSize * 0.52,
+              fontWeight: FontWeight.w700,
+              color: onDark ? Colors.white : AppColors.navy,
+              letterSpacing: 0.2,
             ),
-        if (subtitle != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: fontSize * 0.5,
-                    fontWeight: FontWeight.w600,
-                    color: onDark ? Colors.white70 : AppColors.navy,
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
       ],
     );
