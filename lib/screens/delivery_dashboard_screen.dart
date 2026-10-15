@@ -19,15 +19,26 @@ class DeliveryDashboardScreen extends StatefulWidget {
 
 class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   List<DeliveryOrder> _deliveries = [];
+  int _deliveredCount = 0;
   bool _loading = true;
   String? _error;
   String _sortBy = 'Earliest Slot';
+  String _statusFilter = 'All'; // 'All', 'Out for Delivery', 'Ready to Deliver'
+  String _paymentFilter = 'All'; // 'All', 'COD', 'Paid Online'
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   String? _updatingOrderId;
 
   @override
   void initState() {
     super.initState();
     _fetchDeliveries();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDeliveries() async {
@@ -37,10 +48,21 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
     });
 
     try {
-      final list = await SupabaseService.getDeliveryOrders(widget.user.storeId);
+      final listFuture =
+          SupabaseService.getDeliveryOrders(widget.user.storeId);
+      final historyFuture = SupabaseService.getDeliveryHistory(
+          widget.user.id, widget.user.storeId);
+      final results = await Future.wait([listFuture, historyFuture]);
+
+      final list = results[0];
+      final history = results[1];
+
       if (mounted) {
         setState(() {
-          _deliveries = list;
+          // Keep only active non-delivered orders
+          _deliveries =
+              list.where((d) => d.status != DeliveryStatus.delivered).toList();
+          _deliveredCount = history.length;
           _loading = false;
         });
       }
@@ -60,16 +82,63 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   int get _remaining =>
       _deliveries.where((d) => d.status == DeliveryStatus.ready).length;
 
-  int get _delivered =>
-      _deliveries.where((d) => d.status == DeliveryStatus.delivered).length;
+  int get _delivered => _deliveredCount;
 
   List<DeliveryOrder> get _active {
-    final list = List<DeliveryOrder>.from(_deliveries);
-    if (_sortBy == 'Highest Amount') {
-      list.sort((a, b) => b.amount.compareTo(a.amount));
-    } else if (_sortBy == 'Earliest Slot') {
-      list.sort((a, b) => a.time.compareTo(b.time));
+    var list = _deliveries
+        .where((d) => d.status != DeliveryStatus.delivered)
+        .toList();
+
+    // 1. Status Filter
+    if (_statusFilter == 'Out for Delivery') {
+      list = list.where((d) => d.status == DeliveryStatus.inProgress).toList();
+    } else if (_statusFilter == 'Ready to Deliver') {
+      list = list.where((d) => d.status == DeliveryStatus.ready).toList();
     }
+
+    // 2. Payment Filter
+    if (_paymentFilter == 'COD') {
+      list = list.where((d) => d.isCod).toList();
+    } else if (_paymentFilter == 'Paid Online') {
+      list = list.where((d) => !d.isCod).toList();
+    }
+
+    // 3. Search Query
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((d) {
+        final idMatch = d.id.toLowerCase().contains(q);
+        final nameMatch = d.customerName.toLowerCase().contains(q);
+        final phoneMatch = d.phone.toLowerCase().contains(q);
+        final addrMatch =
+            '${d.addressLine1} ${d.addressLine2}'.toLowerCase().contains(q);
+        return idMatch || nameMatch || phoneMatch || addrMatch;
+      }).toList();
+    }
+
+    // 4. Sort
+    if (_sortBy == 'Earliest Slot' || _sortBy == 'Oldest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return a.createdAt!.compareTo(b.createdAt!);
+        }
+        return a.time.compareTo(b.time);
+      });
+    } else if (_sortBy == 'Newest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+        return b.time.compareTo(a.time);
+      });
+    } else if (_sortBy == 'Highest Amount') {
+      list.sort((a, b) => b.amount.compareTo(a.amount));
+    } else if (_sortBy == 'Lowest Amount') {
+      list.sort((a, b) => a.amount.compareTo(b.amount));
+    } else if (_sortBy == 'Most Items') {
+      list.sort((a, b) => b.itemCount.compareTo(a.itemCount));
+    }
+
     return list;
   }
 
@@ -104,6 +173,9 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
         if (mounted) {
           setState(() {
             order.status = DeliveryStatus.delivered;
+            // IMMEDIATELY remove from active deliveries so it moves to History!
+            _deliveries.removeWhere((d) => d.rawId == order.rawId);
+            _deliveredCount++;
             _updatingOrderId = null;
           });
         }
@@ -118,7 +190,7 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                 children: [
                   Icon(Icons.check_circle, color: Colors.white, size: 18),
                   SizedBox(width: 8),
-                  Text('Order Delivered Successfully'),
+                  Text('Order Delivered Successfully — Moved to History'),
                 ],
               ),
             ),
@@ -234,17 +306,44 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 16),
+                  OrderSearchBar(
+                    controller: _searchController,
+                    hintText: 'Search by Order #, Customer, Phone, Address...',
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                  const SizedBox(height: 10),
+                  FilterChipsRow<String>(
+                    options: const ['All', 'Out for Delivery', 'Ready to Deliver'],
+                    selected: _statusFilter,
+                    onSelected: (val) => setState(() => _statusFilter = val),
+                    labelBuilder: (opt) {
+                      if (opt == 'All') return 'All (${_deliveries.length})';
+                      if (opt == 'Out for Delivery') return 'Out for Delivery ($_inProgress)';
+                      return 'Ready to Deliver ($_remaining)';
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  FilterChipsRow<String>(
+                    options: const ['All', 'COD', 'Paid Online'],
+                    selected: _paymentFilter,
+                    onSelected: (val) => setState(() => _paymentFilter = val),
+                    labelBuilder: (opt) => opt == 'All' ? 'All Payments' : opt,
+                  ),
+                  const SizedBox(height: 18),
                   SectionHeader(
                     title: 'Your Deliveries',
                     sortValue: _sortBy,
                     sortOptions: const [
                       'Earliest Slot',
+                      'Newest First',
                       'Highest Amount',
+                      'Lowest Amount',
+                      'Most Items',
                     ],
                     onSortChanged: (value) => setState(() => _sortBy = value),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),
@@ -475,9 +574,14 @@ class _DeliveryCard extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => OrderDetailsScreen(
+              builder: (ctx) => OrderDetailsScreen(
                 order: delivery,
-                onAction: () => onAction(),
+                onAction: () {
+                  onAction();
+                  if (delivery.status == DeliveryStatus.delivered) {
+                    Navigator.of(ctx).pop();
+                  }
+                },
                 isUpdating: isUpdating,
               ),
             ),

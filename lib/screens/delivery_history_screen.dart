@@ -23,6 +23,9 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
   late String _month;
   late List<String> _monthOptions;
   String _sortBy = 'Newest First';
+  String _paymentFilter = 'All'; // 'All', 'COD', 'Paid Online'
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +41,12 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
     _fetchHistory();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchHistory() async {
     setState(() {
       _loading = true;
@@ -46,7 +55,8 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
 
     try {
       final staffId = widget.user?.id ?? '';
-      final list = await SupabaseService.getDeliveryHistory(staffId);
+      final list = await SupabaseService.getDeliveryHistory(
+          staffId, widget.user?.storeId);
       if (mounted) {
         setState(() {
           _allHistory = list;
@@ -64,19 +74,58 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
   }
 
   List<DeliveryOrder> get _filteredHistory {
-    if (_month == 'All Time') return _allHistory;
-    return _allHistory.where((d) {
-      if (d.createdAt == null) return true;
-      final m = DateFormat('MMMM yyyy').format(d.createdAt!);
-      return m == _month;
-    }).toList();
+    var list = _allHistory;
+    if (_month != 'All Time') {
+      list = list.where((d) {
+        if (d.createdAt == null) return true;
+        final m = DateFormat('MMMM yyyy').format(d.createdAt!);
+        return m == _month;
+      }).toList();
+    }
+
+    if (_paymentFilter == 'COD') {
+      list = list.where((d) => d.isCod).toList();
+    } else if (_paymentFilter == 'Paid Online') {
+      list = list.where((d) => !d.isCod).toList();
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((d) {
+        final idMatch = d.id.toLowerCase().contains(q);
+        final nameMatch = d.customerName.toLowerCase().contains(q);
+        final phoneMatch = d.phone.toLowerCase().contains(q);
+        final addrMatch =
+            '${d.addressLine1} ${d.addressLine2}'.toLowerCase().contains(q);
+        return idMatch || nameMatch || phoneMatch || addrMatch;
+      }).toList();
+    }
+
+    return list;
   }
 
   List<DeliveryOrder> get _sorted {
     final list = List<DeliveryOrder>.from(_filteredHistory);
-    if (_sortBy == 'Oldest First') return list.reversed.toList();
-    if (_sortBy == 'Highest Amount') {
+    if (_sortBy == 'Newest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+        return b.time.compareTo(a.time);
+      });
+    } else if (_sortBy == 'Oldest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return a.createdAt!.compareTo(b.createdAt!);
+        }
+        return a.time.compareTo(b.time);
+      });
+    } else if (_sortBy == 'Highest Amount') {
       list.sort((a, b) => b.amount.compareTo(a.amount));
+    } else if (_sortBy == 'Lowest Amount') {
+      list.sort((a, b) => a.amount.compareTo(b.amount));
+    } else if (_sortBy == 'Most Items') {
+      list.sort((a, b) => b.itemCount.compareTo(a.itemCount));
     }
     return list;
   }
@@ -136,6 +185,19 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
                     options: _monthOptions,
                     onChanged: (value) => setState(() => _month = value),
                   ),
+                  const SizedBox(height: 14),
+                  OrderSearchBar(
+                    controller: _searchController,
+                    hintText: 'Search completed orders by #, customer...',
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                  const SizedBox(height: 10),
+                  FilterChipsRow<String>(
+                    options: const ['All', 'COD', 'Paid Online'],
+                    selected: _paymentFilter,
+                    onSelected: (val) => setState(() => _paymentFilter = val),
+                    labelBuilder: (opt) => opt == 'All' ? 'All Payments' : opt,
+                  ),
                   const SizedBox(height: 16),
                   SummaryStrip(
                     items: [
@@ -157,7 +219,7 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
                   SectionHeader(
                     title: 'Completed Deliveries',
                     sortValue: _sortBy,
@@ -165,10 +227,12 @@ class _DeliveryHistoryScreenState extends State<DeliveryHistoryScreen> {
                       'Newest First',
                       'Oldest First',
                       'Highest Amount',
+                      'Lowest Amount',
+                      'Most Items',
                     ],
                     onSortChanged: (value) => setState(() => _sortBy = value),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),

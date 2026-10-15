@@ -23,6 +23,9 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
   late String _month;
   late List<String> _monthOptions;
   String _sortBy = 'Newest First';
+  String _typeFilter = 'All'; // 'All', 'Delivery', 'Self Pickup'
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -38,6 +41,12 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
     _fetchHistory();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchHistory() async {
     setState(() {
       _loading = true;
@@ -46,7 +55,8 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
 
     try {
       final staffId = widget.user?.id ?? '';
-      final history = await SupabaseService.getPackerHistory(staffId);
+      final history = await SupabaseService.getPackerHistory(
+          staffId, widget.user?.storeId);
       if (mounted) {
         setState(() {
           _allHistory = history;
@@ -64,19 +74,56 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
   }
 
   List<PackerOrder> get _filteredHistory {
-    if (_month == 'All Time') return _allHistory;
-    return _allHistory.where((o) {
-      if (o.createdAt == null) return true;
-      final m = DateFormat('MMMM yyyy').format(o.createdAt!);
-      return m == _month;
-    }).toList();
+    var list = _allHistory;
+    if (_month != 'All Time') {
+      list = list.where((o) {
+        if (o.createdAt == null) return true;
+        final m = DateFormat('MMMM yyyy').format(o.createdAt!);
+        return m == _month;
+      }).toList();
+    }
+
+    if (_typeFilter == 'Delivery') {
+      list = list.where((o) => o.orderType == OrderType.delivery).toList();
+    } else if (_typeFilter == 'Self Pickup') {
+      list = list.where((o) => o.orderType == OrderType.selfPickup).toList();
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((o) {
+        final idMatch = o.id.toLowerCase().contains(q);
+        final nameMatch = o.customerName.toLowerCase().contains(q);
+        final phoneMatch = o.phone.toLowerCase().contains(q);
+        return idMatch || nameMatch || phoneMatch;
+      }).toList();
+    }
+
+    return list;
   }
 
   List<PackerOrder> get _sorted {
     final list = List<PackerOrder>.from(_filteredHistory);
-    if (_sortBy == 'Oldest First') return list.reversed.toList();
-    if (_sortBy == 'Highest Value') {
+    if (_sortBy == 'Newest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+        return b.time.compareTo(a.time);
+      });
+    } else if (_sortBy == 'Oldest First') {
+      list.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return a.createdAt!.compareTo(b.createdAt!);
+        }
+        return a.time.compareTo(b.time);
+      });
+    } else if (_sortBy == 'Highest Value') {
       list.sort((a, b) => b.orderValue.compareTo(a.orderValue));
+    } else if (_sortBy == 'Lowest Value') {
+      list.sort((a, b) => a.orderValue.compareTo(b.orderValue));
+    } else if (_sortBy == 'Most Items') {
+      list.sort((a, b) => b.totalItems.compareTo(a.totalItems));
     }
     return list;
   }
@@ -113,6 +160,27 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
                     options: _monthOptions,
                     onChanged: (value) => setState(() => _month = value),
                   ),
+                  const SizedBox(height: 14),
+                  OrderSearchBar(
+                    controller: _searchController,
+                    hintText: 'Search packed orders by #, customer...',
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                  const SizedBox(height: 10),
+                  FilterChipsRow<String>(
+                    options: const ['All', 'Delivery', 'Self Pickup'],
+                    selected: _typeFilter,
+                    onSelected: (val) => setState(() => _typeFilter = val),
+                    labelBuilder: (opt) {
+                      if (opt == 'All') return 'All (${_allHistory.length})';
+                      if (opt == 'Delivery') {
+                        final cnt = _allHistory.where((o) => o.orderType == OrderType.delivery).length;
+                        return 'Delivery ($cnt)';
+                      }
+                      final cnt = _allHistory.where((o) => o.orderType == OrderType.selfPickup).length;
+                      return 'Self Pickup ($cnt)';
+                    },
+                  ),
                   const SizedBox(height: 16),
                   SummaryStrip(
                     items: [
@@ -133,7 +201,7 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 20),
                   SectionHeader(
                     title: 'Orders',
                     sortValue: _sortBy,
@@ -141,10 +209,12 @@ class _PackerHistoryScreenState extends State<PackerHistoryScreen> {
                       'Newest First',
                       'Oldest First',
                       'Highest Value',
+                      'Lowest Value',
+                      'Most Items',
                     ],
                     onSortChanged: (value) => setState(() => _sortBy = value),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 48),

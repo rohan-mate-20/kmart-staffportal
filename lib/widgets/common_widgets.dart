@@ -718,3 +718,115 @@ class OrderItemsList extends StatelessWidget {
   }
 }
 
+/// ---------------------------------------------------------------------------
+/// Reusable Filter Chip row
+/// ---------------------------------------------------------------------------
+class FilterChipsRow<T> extends StatelessWidget {
+  final List<T> options;
+  final T selected;
+  final ValueChanged<T> onSelected;
+  final String Function(T) labelBuilder;
+
+  const FilterChipsRow({
+    super.key,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+    required this.labelBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          for (final opt in options) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(labelBuilder(opt)),
+                selected: selected == opt,
+                onSelected: (val) {
+                  if (val) onSelected(opt);
+                },
+                selectedColor: AppColors.navy,
+                backgroundColor: AppColors.surface,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected == opt ? FontWeight.w700 : FontWeight.w600,
+                  color: selected == opt ? Colors.white : AppColors.textSecondary,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: BorderSide(
+                    color: selected == opt ? AppColors.navy : AppColors.border,
+                  ),
+                ),
+                showCheckmark: false,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// Reusable Order Search Bar
+/// ---------------------------------------------------------------------------
+class OrderSearchBar extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
+
+  const OrderSearchBar({
+    super.key,
+    required this.controller,
+    this.hintText = 'Search by Order # or Customer...',
+    required this.onChanged,
+    this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        style: const TextStyle(fontSize: 13, color: AppColors.navy),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(
+            fontSize: 12.5,
+            color: AppColors.textSecondary,
+          ),
+          prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+          suffixIcon: controller.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 16, color: AppColors.textSecondary),
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                    onClear?.call();
+                  },
+                )
+              : null,
+          isDense: true,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        ),
+      ),
+    );
+  }
+}
+

@@ -792,6 +792,8 @@ class DeliveryOrder {
     );
   }
 
+  bool get isCod => payment == PaymentMode.cod;
+
   String get shortAddress => addressLine1.contains(',')
       ? addressLine1.split(',').last.trim()
       : addressLine1;

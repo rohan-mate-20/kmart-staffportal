@@ -197,72 +197,141 @@ class SupabaseService {
   }
 
   /// Fetch packer history (status: PACKED, changed_by: staff.id)
-  static Future<List<PackerOrder>> getPackerHistory(String staffId) async {
-    final response = await client
-        .from('order_status_history')
-        .select('''
-          id,
-          order_id,
-          status,
-          changed_at,
-          orders (
-            id,
-            order_number,
-            total,
-            status,
-            order_type,
-            created_at,
-            store_id,
-            customer_id,
-            payment_method,
-            customer_snapshot,
-            delivery_address_snapshot,
-            customers (
+  static Future<List<PackerOrder>> getPackerHistory(String staffId,
+      [String? storeId]) async {
+    List<PackerOrder> orders = [];
+
+    if (staffId.isNotEmpty) {
+      try {
+        final response = await client
+            .from('order_status_history')
+            .select('''
               id,
-              name,
-              phone,
-              email,
-              addresses (
+              order_id,
+              status,
+              changed_at,
+              orders (
                 id,
-                line1,
-                line2,
-                city,
-                state,
-                pincode,
-                is_default
+                order_number,
+                total,
+                status,
+                order_type,
+                created_at,
+                store_id,
+                customer_id,
+                payment_method,
+                customer_snapshot,
+                delivery_address_snapshot,
+                customers (
+                  id,
+                  name,
+                  phone,
+                  email,
+                  addresses (
+                    id,
+                    line1,
+                    line2,
+                    city,
+                    state,
+                    pincode,
+                    is_default
+                  )
+                ),
+                order_items (
+                  id,
+                  product_id,
+                  product_name,
+                  quantity,
+                  unit_mrp,
+                  unit_selling_price,
+                  line_total,
+                  products (
+                    id,
+                    name,
+                    sku,
+                    selling_price
+                  )
+                )
               )
-            ),
-            order_items (
+            ''')
+            .eq('status', 'PACKED')
+            .eq('changed_by', staffId)
+            .order('changed_at', ascending: false);
+
+        final historyList = List<Map<String, dynamic>>.from(response);
+        for (final hist in historyList) {
+          final orderMap = hist['orders'] as Map<String, dynamic>?;
+          if (orderMap == null) continue;
+
+          final order = PackerOrder.fromMap(orderMap);
+          order.status = PackStatus.packed;
+          orders.add(order);
+        }
+      } catch (e) {
+        debugPrint('Error fetching packer history: $e');
+      }
+    }
+
+    if (orders.isEmpty && storeId != null && storeId.isNotEmpty) {
+      try {
+        final response = await client
+            .from('orders')
+            .select('''
               id,
-              product_id,
-              product_name,
-              quantity,
-              unit_mrp,
-              unit_selling_price,
-              line_total,
-              products (
+              order_number,
+              total,
+              status,
+              order_type,
+              created_at,
+              store_id,
+              customer_id,
+              payment_method,
+              customer_snapshot,
+              delivery_address_snapshot,
+              customers (
                 id,
                 name,
-                sku,
-                selling_price
+                phone,
+                email,
+                addresses (
+                  id,
+                  line1,
+                  line2,
+                  city,
+                  state,
+                  pincode,
+                  is_default
+                )
+              ),
+              order_items (
+                id,
+                product_id,
+                product_name,
+                quantity,
+                unit_mrp,
+                unit_selling_price,
+                line_total,
+                products (
+                  id,
+                  name,
+                  sku,
+                  selling_price
+                )
               )
-            )
-          )
-        ''')
-        .eq('status', 'PACKED')
-        .eq('changed_by', staffId)
-        .order('changed_at', ascending: false);
+            ''')
+            .eq('store_id', storeId)
+            .eq('status', 'PACKED')
+            .order('created_at', ascending: false);
 
-    final historyList = List<Map<String, dynamic>>.from(response);
-    final List<PackerOrder> orders = [];
-
-    for (final hist in historyList) {
-      final orderMap = hist['orders'] as Map<String, dynamic>?;
-      if (orderMap == null) continue;
-
-      final order = PackerOrder.fromMap(orderMap);
-      order.status = PackStatus.packed;
-      orders.add(order);
+        final list = List<Map<String, dynamic>>.from(response);
+        orders = list.map((m) {
+          final order = PackerOrder.fromMap(m);
+          order.status = PackStatus.packed;
+          return order;
+        }).toList();
+      } catch (e) {
+        debugPrint('Error fetching fallback packed orders: $e');
+      }
     }
 
     return orders;
@@ -321,7 +390,7 @@ class SupabaseService {
         ''')
         .eq('store_id', storeId)
         .eq('order_type', 'DELIVERY')
-        .inFilter('status', ['PACKED', 'OUT_FOR_DELIVERY', 'DELIVERED'])
+        .inFilter('status', ['PACKED', 'OUT_FOR_DELIVERY'])
         .order('created_at', ascending: true);
 
     final list = List<Map<String, dynamic>>.from(response);
@@ -381,72 +450,142 @@ class SupabaseService {
   }
 
   /// Fetch delivery history (status: DELIVERED, changed_by: staff.id)
-  static Future<List<DeliveryOrder>> getDeliveryHistory(String staffId) async {
-    final response = await client
-        .from('order_status_history')
-        .select('''
-          id,
-          order_id,
-          status,
-          changed_at,
-          orders (
-            id,
-            order_number,
-            total,
-            status,
-            order_type,
-            created_at,
-            store_id,
-            customer_id,
-            payment_method,
-            customer_snapshot,
-            delivery_address_snapshot,
-            customers (
+  static Future<List<DeliveryOrder>> getDeliveryHistory(String staffId,
+      [String? storeId]) async {
+    List<DeliveryOrder> deliveries = [];
+
+    if (staffId.isNotEmpty) {
+      try {
+        final response = await client
+            .from('order_status_history')
+            .select('''
               id,
-              name,
-              phone,
-              email,
-              addresses (
+              order_id,
+              status,
+              changed_at,
+              orders (
                 id,
-                line1,
-                line2,
-                city,
-                state,
-                pincode,
-                is_default
+                order_number,
+                total,
+                status,
+                order_type,
+                created_at,
+                store_id,
+                customer_id,
+                payment_method,
+                customer_snapshot,
+                delivery_address_snapshot,
+                customers (
+                  id,
+                  name,
+                  phone,
+                  email,
+                  addresses (
+                    id,
+                    line1,
+                    line2,
+                    city,
+                    state,
+                    pincode,
+                    is_default
+                  )
+                ),
+                order_items (
+                  id,
+                  product_id,
+                  product_name,
+                  quantity,
+                  unit_mrp,
+                  unit_selling_price,
+                  line_total,
+                  products (
+                    id,
+                    name,
+                    sku,
+                    selling_price
+                  )
+                )
               )
-            ),
-            order_items (
+            ''')
+            .eq('status', 'DELIVERED')
+            .eq('changed_by', staffId)
+            .order('changed_at', ascending: false);
+
+        final historyList = List<Map<String, dynamic>>.from(response);
+        for (final hist in historyList) {
+          final orderMap = hist['orders'] as Map<String, dynamic>?;
+          if (orderMap == null) continue;
+
+          final delivery = DeliveryOrder.fromMap(orderMap);
+          delivery.status = DeliveryStatus.delivered;
+          deliveries.add(delivery);
+        }
+      } catch (e) {
+        debugPrint('Error fetching delivery history from order_status_history: $e');
+      }
+    }
+
+    if (deliveries.isEmpty && storeId != null && storeId.isNotEmpty) {
+      try {
+        final response = await client
+            .from('orders')
+            .select('''
               id,
-              product_id,
-              product_name,
-              quantity,
-              unit_mrp,
-              unit_selling_price,
-              line_total,
-              products (
+              order_number,
+              total,
+              status,
+              order_type,
+              created_at,
+              store_id,
+              customer_id,
+              payment_method,
+              customer_snapshot,
+              delivery_address_snapshot,
+              customers (
                 id,
                 name,
-                sku,
-                selling_price
+                phone,
+                email,
+                addresses (
+                  id,
+                  line1,
+                  line2,
+                  city,
+                  state,
+                  pincode,
+                  is_default
+                )
+              ),
+              order_items (
+                id,
+                product_id,
+                product_name,
+                quantity,
+                unit_mrp,
+                unit_selling_price,
+                line_total,
+                products (
+                  id,
+                  name,
+                  sku,
+                  selling_price
+                )
               )
-            )
-          )
-        ''')
-        .eq('status', 'DELIVERED')
-        .eq('changed_by', staffId)
-        .order('changed_at', ascending: false);
+            ''')
+            .eq('store_id', storeId)
+            .eq('order_type', 'DELIVERY')
+            .eq('status', 'DELIVERED')
+            .order('created_at', ascending: false);
 
-    final historyList = List<Map<String, dynamic>>.from(response);
-    final List<DeliveryOrder> deliveries = [];
-
-    for (final hist in historyList) {
-      final orderMap = hist['orders'] as Map<String, dynamic>?;
-      if (orderMap == null) continue;
-
-      final delivery = DeliveryOrder.fromMap(orderMap);
-      delivery.status = DeliveryStatus.delivered;
-      deliveries.add(delivery);
+        final list = List<Map<String, dynamic>>.from(response);
+        deliveries = list.map((m) {
+          final delivery = DeliveryOrder.fromMap(m);
+          delivery.status = DeliveryStatus.delivered;
+          return delivery;
+        }).toList();
+      } catch (e) {
+        debugPrint('Error fetching fallback delivered orders: $e');
+      }
     }
 
     return deliveries;

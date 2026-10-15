@@ -20,11 +20,20 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
   bool _loading = true;
   String? _error;
   String _sortBy = 'Oldest First';
+  String _typeFilter = 'All'; // 'All', 'Delivery', 'Self Pickup'
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchOrders();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchOrders() async {
@@ -52,14 +61,52 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
   }
 
   List<PackerOrder> get _visibleOrders {
-    final pending =
+    var pending =
         _orders.where((o) => o.status == PackStatus.toPack).toList();
-    if (_sortBy == 'Newest First') {
-      return pending.reversed.toList();
+
+    // 1. Order Type Filter
+    if (_typeFilter == 'Delivery') {
+      pending =
+          pending.where((o) => o.orderType == OrderType.delivery).toList();
+    } else if (_typeFilter == 'Self Pickup') {
+      pending =
+          pending.where((o) => o.orderType == OrderType.selfPickup).toList();
     }
-    if (_sortBy == 'Highest Value') {
+
+    // 2. Search Query
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      pending = pending.where((o) {
+        final idMatch = o.id.toLowerCase().contains(q);
+        final nameMatch = o.customerName.toLowerCase().contains(q);
+        final phoneMatch = o.phone.toLowerCase().contains(q);
+        return idMatch || nameMatch || phoneMatch;
+      }).toList();
+    }
+
+    // 3. Sorting
+    if (_sortBy == 'Oldest First') {
+      pending.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return a.createdAt!.compareTo(b.createdAt!);
+        }
+        return a.time.compareTo(b.time);
+      });
+    } else if (_sortBy == 'Newest First') {
+      pending.sort((a, b) {
+        if (a.createdAt != null && b.createdAt != null) {
+          return b.createdAt!.compareTo(a.createdAt!);
+        }
+        return b.time.compareTo(a.time);
+      });
+    } else if (_sortBy == 'Highest Value') {
       pending.sort((a, b) => b.orderValue.compareTo(a.orderValue));
+    } else if (_sortBy == 'Lowest Value') {
+      pending.sort((a, b) => a.orderValue.compareTo(b.orderValue));
+    } else if (_sortBy == 'Most Items') {
+      pending.sort((a, b) => b.totalItems.compareTo(a.totalItems));
     }
+
     return pending;
   }
 
@@ -145,7 +192,28 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 16),
+              OrderSearchBar(
+                controller: _searchController,
+                hintText: 'Search by Order #, Customer, Phone...',
+                onChanged: (val) => setState(() => _searchQuery = val),
+              ),
+              const SizedBox(height: 10),
+              FilterChipsRow<String>(
+                options: const ['All', 'Delivery', 'Self Pickup'],
+                selected: _typeFilter,
+                onSelected: (val) => setState(() => _typeFilter = val),
+                labelBuilder: (opt) {
+                  if (opt == 'All') return 'All Orders (${_orders.where((o) => o.status == PackStatus.toPack).length})';
+                  if (opt == 'Delivery') {
+                    final cnt = _orders.where((o) => o.status == PackStatus.toPack && o.orderType == OrderType.delivery).length;
+                    return 'Delivery ($cnt)';
+                  }
+                  final cnt = _orders.where((o) => o.status == PackStatus.toPack && o.orderType == OrderType.selfPickup).length;
+                  return 'Self Pickup ($cnt)';
+                },
+              ),
+              const SizedBox(height: 18),
               SectionHeader(
                 title: 'Orders to Pack',
                 sortValue: _sortBy,
@@ -153,10 +221,12 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
                   'Oldest First',
                   'Newest First',
                   'Highest Value',
+                  'Lowest Value',
+                  'Most Items',
                 ],
                 onSortChanged: (value) => setState(() => _sortBy = value),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               if (_loading)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 48),
@@ -326,9 +396,12 @@ class _PackerOrderCard extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => OrderDetailsScreen(
+              builder: (ctx) => OrderDetailsScreen(
                 order: order,
-                onAction: onMarkPacked,
+                onAction: () {
+                  onMarkPacked();
+                  Navigator.of(ctx).pop();
+                },
               ),
             ),
           );
