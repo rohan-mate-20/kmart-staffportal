@@ -8,7 +8,11 @@ plugins {
 }
 
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
+val keystorePropertiesFile = if (rootProject.file("key.properties").exists()) {
+    rootProject.file("key.properties")
+} else {
+    file("key.properties")
+}
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
@@ -41,19 +45,16 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?
             keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storeFile = keystoreProperties["storeFile"]?.let {
+                if (file(it).exists()) file(it) else rootProject.file(it)
+            }
             storePassword = keystoreProperties["storePassword"] as String?
         }
     }
 
     buildTypes {
         release {
-            val releaseSigning = signingConfigs.getByName("release")
-            signingConfig = if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
-                releaseSigning
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

@@ -46,23 +46,6 @@ jobs:
       - name: Run Unit & Widget Tests
         run: flutter test
 
-      - name: Configure Android Release Signing
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
-            cat <<EOF > android/key.properties
-          storePassword=${KEYSTORE_PASSWORD:-kmartstaff2026}
-          keyPassword=${KEY_PASSWORD:-kmartstaff2026}
-          keyAlias=${KEY_ALIAS:-upload}
-          storeFile=upload-keystore.jks
-          EOF
-          fi
-
       - name: Build Android Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
