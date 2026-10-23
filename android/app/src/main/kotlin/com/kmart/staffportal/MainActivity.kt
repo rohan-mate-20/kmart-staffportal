@@ -1,4 +1,4 @@
-package com.example.kmart_staff_portal
+package com.kmart.staffportal
 
 import io.flutter.embedding.android.FlutterActivity
 

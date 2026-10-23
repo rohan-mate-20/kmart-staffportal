@@ -15,10 +15,10 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # Android Build Job
+  # Android Build Job (Release APK & App Bundle .aab for Google Play)
   # =========================================================================
   build-android:
-    name: Build Android APK
+    name: Build Android APK & AAB Bundle
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -46,14 +46,41 @@ jobs:
       - name: Run Unit & Widget Tests
         run: flutter test
 
+      - name: Configure Android Release Signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'kmartstaff2026' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'upload' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'kmartstaff2026' }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          cat <<EOF > android/key.properties
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
       - name: Build Android Release APK
         run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Build Android App Bundle (.aab for Google Play Store)
+        run: flutter build appbundle --release --no-tree-shake-icons
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: kmart_staff_portal-android-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Android App Bundle (.aab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kmart_staff_portal-android-release-bundle
+          path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 30
 
@@ -134,6 +161,12 @@ jobs:
           name: kmart_staff_portal-android-release-apk
           path: release-artifacts
 
+      - name: Download Android App Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: kmart_staff_portal-android-release-bundle
+          path: release-artifacts
+
       - name: Download iOS IPA
         uses: actions/download-artifact@v4
         with:
@@ -145,6 +178,7 @@ jobs:
         with:
           files: |
             release-artifacts/app-release.apk
+            release-artifacts/app-release.aab
             release-artifacts/kmart_staff_portal-ios-release.ipa
           draft: false
           prerelease: false
