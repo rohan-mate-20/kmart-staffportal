@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kmart_staff_portal/models/models.dart';
 import 'package:kmart_staff_portal/screens/login_screen.dart';
 import 'package:kmart_staff_portal/screens/order_details_screen.dart';
+import 'package:kmart_staff_portal/screens/profile_screen.dart';
+import 'package:kmart_staff_portal/services/native_notification_service.dart';
+import 'package:kmart_staff_portal/services/order_monitor_service.dart';
 import 'package:kmart_staff_portal/theme/app_theme.dart';
 import 'package:kmart_staff_portal/widgets/common_widgets.dart';
 
@@ -238,5 +242,75 @@ void main() {
     expect(find.text('Basmati Rice 1kg'), findsOneWidget);
     expect(find.text('Unit Price: ₹225'), findsOneWidget);
     expect(find.text('Qty: 2'), findsOneWidget);
+  });
+
+  testWidgets('ProfileScreen renders Android System Notifications card and test button',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    const user = StaffUser(
+      id: 'staff-1',
+      storeId: 'store-1',
+      name: 'Rohan Mate',
+      role: StaffRole.packer,
+      store: 'Kmart Central',
+      email: 'rohan@kmart.com',
+      phone: '9876543210',
+      employeeId: 'EMP-101',
+      storeAddress: 'MG Road, Pune',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const ProfileScreen(user: user),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Android System Notifications'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
+    expect(find.text('Send Test'), findsOneWidget);
+  });
+
+  test('NativeNotificationService handles showNotification and permission check gracefully',
+      () async {
+    // In test environment, MethodChannels can be called or fall back gracefully
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('kmart_staff/notifications'),
+      (MethodCall call) async {
+        if (call.method == 'showNotification') return true;
+        if (call.method == 'checkNotificationPermission') return true;
+        if (call.method == 'requestNotificationPermission') return true;
+        return null;
+      },
+    );
+
+    final sent = await NativeNotificationService.showNotification(
+      title: '📦 New Order Alert',
+      body: 'Order #KM1001 needs packing',
+    );
+    expect(sent, isTrue);
+
+    final perm = await NativeNotificationService.checkNotificationPermission();
+    expect(perm, isTrue);
+  });
+
+  test('OrderMonitorService manages listener registration and stop lifecycle', () {
+    final monitor = OrderMonitorService.instance;
+    int callCount = 0;
+    void listener() => callCount++;
+
+    monitor.addListener(listener);
+    monitor.stop();
+    expect(monitor.isMonitoring, isFalse);
+    monitor.removeListener(listener);
+    expect(callCount, 0);
   });
 }

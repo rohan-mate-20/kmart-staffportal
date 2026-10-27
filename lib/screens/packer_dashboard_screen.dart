@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/native_notification_service.dart';
+import '../services/order_monitor_service.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
@@ -28,19 +30,29 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
   void initState() {
     super.initState();
     _fetchOrders();
+    OrderMonitorService.instance.addListener(_onRealtimeOrdersChanged);
   }
 
   @override
   void dispose() {
+    OrderMonitorService.instance.removeListener(_onRealtimeOrdersChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchOrders() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  void _onRealtimeOrdersChanged() {
+    if (mounted) {
+      _fetchOrders(showLoading: false);
+    }
+  }
+
+  Future<void> _fetchOrders({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final orders = await SupabaseService.getOrdersToPack(widget.user.storeId);
@@ -119,6 +131,12 @@ class _PackerDashboardScreenState extends State<PackerDashboardScreen> {
       await SupabaseService.markOrderPacked(order.rawId);
 
       setState(() => order.status = PackStatus.packed);
+
+      // Trigger Android system notification confirmation
+      NativeNotificationService.showNotification(
+        title: '✅ Order #${order.id} Packed',
+        body: 'Order has been packed and moved to history for delivery pickup.',
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context)

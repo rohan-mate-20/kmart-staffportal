@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../services/native_notification_service.dart';
+import '../services/order_monitor_service.dart';
 import 'delivery_dashboard_screen.dart';
 import 'delivery_history_screen.dart';
 import 'packer_dashboard_screen.dart';
@@ -22,6 +24,21 @@ class _HomeShellState extends State<HomeShell> {
   late int _index = widget.initialIndex;
 
   bool get _isPacker => widget.user.role == StaffRole.packer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prompt Android 13+ for notification permission on home screen entry
+    NativeNotificationService.requestNotificationPermission();
+    // Start real-time monitoring of store orders & deliveries
+    OrderMonitorService.instance.start(widget.user);
+  }
+
+  @override
+  void dispose() {
+    OrderMonitorService.instance.stop();
+    super.dispose();
+  }
 
   List<Widget> get _pages => _isPacker
       ? [

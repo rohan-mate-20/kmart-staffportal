@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
+import '../services/native_notification_service.dart';
+import '../services/order_monitor_service.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
@@ -33,19 +35,29 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
   void initState() {
     super.initState();
     _fetchDeliveries();
+    OrderMonitorService.instance.addListener(_onRealtimeOrdersChanged);
   }
 
   @override
   void dispose() {
+    OrderMonitorService.instance.removeListener(_onRealtimeOrdersChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchDeliveries() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  void _onRealtimeOrdersChanged() {
+    if (mounted) {
+      _fetchDeliveries(showLoading: false);
+    }
+  }
+
+  Future<void> _fetchDeliveries({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final listFuture =
@@ -157,6 +169,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             _updatingOrderId = null;
           });
         }
+        // Trigger Android status bar notification
+        NativeNotificationService.showNotification(
+          title: '🛵 Out for Delivery: #${order.id}',
+          body: 'Order is out for delivery. Destination: ${order.addressLine1}',
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -179,6 +196,11 @@ class _DeliveryDashboardScreenState extends State<DeliveryDashboardScreen> {
             _updatingOrderId = null;
           });
         }
+        // Trigger Android status bar notification
+        NativeNotificationService.showNotification(
+          title: '🎉 Delivery Completed: #${order.id}',
+          body: 'Order #${order.id} was delivered successfully.',
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
