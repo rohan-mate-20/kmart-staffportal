@@ -244,7 +244,7 @@ void main() {
     expect(find.text('Qty: 2'), findsOneWidget);
   });
 
-  testWidgets('ProfileScreen renders Android System Notifications card and test button',
+  testWidgets('ProfileScreen renders staff details and logout button',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -273,9 +273,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Android System Notifications'), findsOneWidget);
-    expect(find.text('Active'), findsOneWidget);
-    expect(find.text('Send Test'), findsOneWidget);
+    expect(find.text('Rohan Mate'), findsAtLeastNWidgets(1));
+    expect(find.text('EMP-101'), findsOneWidget);
+    expect(find.text('Logout'), findsOneWidget);
   });
 
   test('NativeNotificationService handles showNotification and permission check gracefully',
